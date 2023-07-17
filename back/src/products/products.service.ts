@@ -1,20 +1,22 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { Product } from './products.entity';
 import { Characteristic } from '../characteristic/Characteristic.entity';
+import { AppService } from '../app.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private db: DataSource,
+    @Inject(forwardRef(() => AppService)) private appService: AppService,
   ) { }
 
   async getAll(
-    perPage?: string,
+    perPage?: number,
     page?: string,
-    characteristics?: string,
-    priceMax?: number, 
+    characteristics?: string[],
+    priceMax?: number,
     priceMin?: number,
     sortBy?: string,
   ): Promise<{ count: number, productsArray: Product[] }> {
@@ -26,7 +28,7 @@ export class ProductsService {
       if (perPage) {
         offset = +page * +perPage;
       } else {
-        perPage = '0';
+        perPage = 5;
       }
 
       if (!priceMin) {
@@ -38,20 +40,18 @@ export class ProductsService {
       }
 
       const queryBuilder = this.db.getRepository(Product).createQueryBuilder('Product')
-        .leftJoinAndSelect('Product.characteristic', 'characteristic')
+        .leftJoinAndSelect('Product.characteristics', 'characteristic')
         .orderBy(
           (sortBy && `Product.${sortBy.toLowerCase()}`) || 'Product.id', 'ASC',
         )
         .andWhere('Product.price BETWEEN :priceMin AND :priceMax', { priceMin, priceMax });
-
       if (characteristics) {
-        const characteristicId = characteristics.split(',');
-        queryBuilder.andWhere('characteristic.id IN (:...characteristicId)', { characteristicId });
+        queryBuilder.andWhere('characteristic.name IN (:...characteristics)', { characteristics });
       }
 
       const products = await queryBuilder
         .skip(offset)
-        .take(+perPage)
+        .take(5)
         .getManyAndCount();
 
       const count = products[1];
@@ -78,7 +78,6 @@ export class ProductsService {
       const characteristics = await this.db.getRepository(Characteristic).createQueryBuilder('characteristic')
         .where('characteristic.id IN (:...characteristicIds)', { characteristicIds })
         .getMany();
-      console.log(characteristics);
       let product = productDb.create({
         name,
         image,

@@ -8,12 +8,18 @@ import PrivateProfileRoute from './routes/PrivateAuthRoutes';
 import SignIn from "./pages/auth/SignIn";
 import Profile from "./pages/profile/Profile";
 import MainPage from "./pages/mainPage/MainPage";
+import AllFilters from "./components/filters/allFIlters/AllFilters";
 
 const App: FC = () => {
   return (
     <>
       <Header /><Routes>
-        <Route path="/" element={<MainPage />} />
+        <Route path="/" element={
+          <>
+            <AllFilters />
+            <MainPage />
+          </>
+        } />
         <Route path="/login" element={
           (
             <PrivateAuthRoute>
